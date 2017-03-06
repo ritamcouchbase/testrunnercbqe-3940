@@ -274,7 +274,7 @@ class MemcachedClientHelper(object):
         return None
 
     @staticmethod
-    def direct_client(server, bucket, timeout=30):
+    def direct_client(server, bucket, timeout=30, admin_user='cbadminbucket',admin_pass='password'):
         log = logger.Logger.get_logger()
         rest = RestConnection(server)
         node = None
@@ -310,8 +310,9 @@ class MemcachedClientHelper(object):
         if isinstance(bucket,Bucket):
             bucket = bucket.name
 
-        client.sasl_auth_plain("temp",
-                               "password")
+        bucket = bucket.encode('ascii')
+
+        client.sasl_auth_plain(admin_user,admin_pass)
         client.bucket_select(bucket)
 
         return client
@@ -375,10 +376,10 @@ class MemcachedClientHelper(object):
             raise Exception("unable to find {0} in get_nodes()".format(server.ip))
 
     @staticmethod
-    def flush_bucket(server, bucket):
+    def flush_bucket(server, bucket, admin_user='cbadminbucket',admin_pass='password'):
         # if memcached throws OOM error try again ?
         log = logger.Logger.get_logger()
-        client = MemcachedClientHelper.direct_client(server, bucket)
+        client = MemcachedClientHelper.direct_client(server, bucket, admin_user=admin_user, admin_pass=admin_pass)
         retry_attempt = 5
         while retry_attempt > 0:
             try:
@@ -456,7 +457,8 @@ class ReaderThread(object):
     #            self.log.error(error_msg.format(key))
 
     def start(self):
-        client = MemcachedClientHelper.direct_client(self.info["server"], self.info['name'])
+        client = MemcachedClientHelper.direct_client(self.info["server"], self.info['name'],admin_user='cbadminbucket',
+                                                     admin_pass='password')
         time.sleep(5)
         while self.queue.empty() and self.keyset:
             selected = MemcachedClientHelper.random_pick(self.keyset)
@@ -755,7 +757,7 @@ class VBucketAwareMemcached(object):
         self.vBucketMap = v
         self.vBucketMapReplica = r
 
-    def reset_vbuckets(self, rest, vbucketids_set, forward_map=None):
+    def reset_vbuckets(self, rest, vbucketids_set, forward_map=None, admin_user='cbadminbucket',admin_pass='password'):
         if not forward_map:
             forward_map = rest.get_bucket(self.bucket, num_attempt=2).forward_map
             if not forward_map:
@@ -776,7 +778,8 @@ class VBucketAwareMemcached(object):
                             server.port = node.port
                     server.ip = masterIp
                     self.log.info("Received forward map, reset vbucket map, new direct_client")
-                    self.memcacheds[vBucket.master] = MemcachedClientHelper.direct_client(server, self.bucket)
+                    self.memcacheds[vBucket.master] = MemcachedClientHelper.direct_client(server, self.bucket,
+                                                                    admin_user=admin_user,admin_pass=admin_pass)
                 # if no one is using that memcached connection anymore just close the connection
                 used_nodes = set([self.vBucketMap[vb_name] for vb_name in self.vBucketMap])
                 rm_clients = []
@@ -808,7 +811,7 @@ class VBucketAwareMemcached(object):
                 self.add_memcached(replica, memcacheds, rest, bucket)
         return memcacheds, vBucketMap, vBucketMapReplica
 
-    def add_memcached(self, server_str, memcacheds, rest, bucket):
+    def add_memcached(self, server_str, memcacheds, rest, bucket, admin_user='cbadminbucket', admin_pass='password'):
         if not server_str in memcacheds:
             serverIp = server_str.split(":")[0]
             serverPort = int(server_str.split(":")[1])
@@ -825,7 +828,8 @@ class VBucketAwareMemcached(object):
                         if server_str not in memcacheds:
                             server.port = node.port
                             memcacheds[server_str] = \
-                                MemcachedClientHelper.direct_client(server, bucket)
+                                MemcachedClientHelper.direct_client(server, bucket, admin_user=admin_user,
+                                                                    admin_pass=admin_pass)
                         break
             except Exception as ex:
                 msg = "unable to establish connection to {0}. cleanup open connections"

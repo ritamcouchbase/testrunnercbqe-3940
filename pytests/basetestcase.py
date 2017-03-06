@@ -238,12 +238,12 @@ class BaseTestCase(unittest.TestCase):
                 self.change_checkpoint_params()
 
                 # Add built-in user
-                testuser = [{'id': 'temp', 'name': 'temp', 'password': 'password'}]
+                testuser = [{'id': 'cbadminbucket', 'name': 'cbadminbucket', 'password': 'password'}]
                 RbacBase().create_user_source(testuser, 'builtin', self.master)
                 self.sleep(10)
 
                 # Assign user to role
-                role_list = [{'id': 'temp', 'name': 'temp', 'roles': 'admin'}]
+                role_list = [{'id': 'cbadminbucket', 'name': 'cbadminbucket', 'roles': 'admin'}]
                 RbacBase().add_user_role(role_list, RestConnection(self.master), 'builtin')
                 self.sleep(10)
 
@@ -380,9 +380,9 @@ class BaseTestCase(unittest.TestCase):
                 BucketOperationHelper.delete_all_buckets_or_assert(self.servers, self)
                 ClusterOperationHelper.cleanup_cluster(self.servers, master=self.master)
                 ClusterOperationHelper.wait_for_ns_servers_or_assert(self.servers, self)
-                role_del = ['temp']
 
                 #Remove rbac user in teardown
+                role_del = ['cbadminbucket']
                 temp = RbacBase().remove_user_role(role_del, rest)
                 self.log.info("==============  basetestcase cleanup was finished for test #{0} {1} ==============" \
                               .format(self.case_number, self._testMethodName))
